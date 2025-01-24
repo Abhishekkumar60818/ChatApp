@@ -18,6 +18,8 @@ namespace ChatApp.Controllers
         {
             var query = _context.Users.AsQueryable();
             var list = await query
+                 .Where(x => string.IsNullOrEmpty(searchQuery) ||
+                            x.Name.Contains(searchQuery))
                 .Select(x => new User
                 {
                     Id = x.Id,
