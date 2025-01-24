@@ -1,0 +1,22 @@
+﻿@model ChatApp.Models.User
+
+
+<form asp-action="Register" method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" required>
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label asp-for="PhoneNumber" class="form-label"></label>
+        <input asp-for="PhoneNumber" class="form-control" required>
+        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+    </div>
+    <div class="mb-3">
+        <label for="ProfileImage" class="form-label">Profile Image</label>
+        <input type="file" class="form-control" id="ProfileImage" name="ProfileImage">
+    </div>
+    <button type="submit" class="btn btn-primary">Add User</button>
+    <a asp-action="Login" class="btn btn-link">Login</a>
+</form>
+

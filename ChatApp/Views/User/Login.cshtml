@@ -1,0 +1,10 @@
+﻿@model ChatApp.Models.User;
+<form asp-action="Login" method="post">
+    <div class="mb-3">
+        <label for="PhoneNumber" class="form-label">Phone Number</label>
+        <input type="text" class="form-control" id="PhoneNumber" name="phoneNumber" required>
+        <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+    <a asp-action="Register" class="btn btn-link">Add User</a>
+</form>
