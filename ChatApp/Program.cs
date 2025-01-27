@@ -1,3 +1,4 @@
+using ChatApp.Hubs;
 using ChatApp.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +12,7 @@ namespace ChatApp
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();
+            builder.Services.AddSignalR();
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddDbContext<ChatAppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -41,6 +43,7 @@ namespace ChatApp
             app.MapControllerRoute(
                 name: "default",
         pattern: "{controller=Chat}/{action=Index}/{id?}");
+            app.MapHub<ChatHub>("/chatHub");
             //pattern: "api/{controller=Chat}/{action=Index}/{id?}"); // Default route for Chat controller
 
             app.Run();

@@ -1,5 +1,7 @@
-﻿using ChatApp.Models;
+﻿using ChatApp.Hubs;
+using ChatApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace ChatApp.Controllers
@@ -7,10 +9,12 @@ namespace ChatApp.Controllers
     public class ChatController : Controller
     {
         private readonly ChatAppDbContext _context;
+        private readonly IHubContext<ChatHub> _hubContext;
 
-        public ChatController(ChatAppDbContext context)
+        public ChatController(ChatAppDbContext context, IHubContext<ChatHub> hubContext)
         {
             _context = context;
+            _hubContext = hubContext;
         }
 
 
@@ -70,7 +74,6 @@ namespace ChatApp.Controllers
             if (chat == null)
                 return BadRequest("Invalid chat message.");
 
-            // Ensure both users exist in the database
             var senderExists = await _context.Users.AnyAsync(u => u.Id == chat.SenderId);
             var receiverExists = await _context.Users.AnyAsync(u => u.Id == chat.ReceiverId);
 
@@ -79,11 +82,12 @@ namespace ChatApp.Controllers
                 return BadRequest("One or both users not found.");
             }
 
-            // Save the message to the database
             _context.Chats.Add(chat);
             await _context.SaveChangesAsync();
 
-            // Return only the newly created message
+            // Notify all clients about the new message
+            await _hubContext.Clients.All.SendAsync("ReceiveMessage", chat.SenderId, chat.Message);
+
             return Ok(new
             {
                 chat.Id,
@@ -92,6 +96,7 @@ namespace ChatApp.Controllers
                 chat.Timestamp
             });
         }
-
     }
+
 }
+

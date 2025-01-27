@@ -5,6 +5,7 @@
     ViewData["Title"] = "Chat";
     string ProfileImage = httpContextAccessor.HttpContext.Session.GetString("UserImage");
     var Userid = httpContextAccessor.HttpContext.Session.GetInt32("UserId");
+    string uName = httpContextAccessor.HttpContext.Session.GetString("uName");
 }
 
 <div class="my-5 bg-white p-0 container rounded">
@@ -20,12 +21,12 @@
                          height="50"
                          data-bs-toggle="dropdown"
                          aria-expanded="false">
-                         <span>@Userid</span>
+                    <span>@uName</span>
                     <ul class="dropdown-menu dropdown-menu-end">
                         @if (Userid != null)
                         {
                             <li>
-                                <a class="dropdown-item text-danger" asp-action="Logout" asp-controller="User">
+                                <a class="dropdown-item text-danger" href="#" onclick="logout()">
                                     Logout
                                 </a>
                             </li>
@@ -104,15 +105,8 @@
         <div class="col-md-8">
             <div id="chat-panel-header" class="p-3 bg-light d-flex justify-content-between align-items-center border-bottom">
             </div>
-            <div class="p-3" style="height: 400px; overflow-y: auto;">
-                <div class="d-flex mb-3">
-                    <!-- Receiver message -->
-                    
-                </div>
-                <div class="d-flex justify-content-end mb-3">
-                    <!-- Sender message -->
-                    
-                </div>
+            <div id="chat-messages" class="p-3" style="height: 400px; overflow-y: auto;">
+                <!-- Chat messages will be dynamically added here -->
             </div>
 
             <div class="input-group p-3 bg-light">
@@ -131,8 +125,35 @@
     </div>
 </div>
 
+<!-- SignalR Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/5.0.11/signalr.min.js"></script>
 <script>
-        async function updateChatPanel(userElement, event) {
+    // SignalR connection
+    const connection = new signalR.HubConnectionBuilder()
+        .withUrl("/chatHub")
+        .build();
+
+    // Start the SignalR connection
+    connection.start().catch(err => console.error(err.toString()));
+
+    // Handle received messages
+    connection.on("ReceiveMessage", (senderId, message) => {
+        const chatContainer = document.getElementById("chat-messages");
+        const isSender = senderId === '@Userid';
+
+        const messageElement = document.createElement('div');
+        messageElement.className = isSender ? 'd-flex justify-content-end mb-3' : 'd-flex mb-3';
+        messageElement.innerHTML = `
+            <div class="${isSender ? 'bg-primary text-white' : 'bg-light'} p-2 rounded-pill">
+                ${message}
+            </div>
+        `;
+        chatContainer.appendChild(messageElement);
+        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+    });
+
+    // Function to update the chat panel when a user is selected
+    async function updateChatPanel(userElement, event) {
         event.preventDefault();
 
         const userId = '@Userid'; // Inject the Userid value from Razor
@@ -144,6 +165,11 @@
         const selectedUserId = userElement.getAttribute("data-id");
         const userName = userElement.getAttribute("data-name");
         const userProfile = userElement.getAttribute("data-profile");
+
+        // Save the selected user ID to local storage
+        localStorage.setItem("selectedUserId", selectedUserId);
+        localStorage.setItem("selectedUserName", userName);
+        localStorage.setItem("selectedUserProfile", userProfile);
 
         // Update chat header
         const chatHeader = document.getElementById("chat-panel-header");
@@ -167,30 +193,28 @@
             if (!response.ok) throw new Error("Failed to fetch messages.");
 
             const messages = await response.json();
-            const chatContainer = document.querySelector('.p-3[style*="overflow-y"]');
+            const chatContainer = document.getElementById("chat-messages");
             chatContainer.innerHTML = '';
 
-                messages.forEach(msg => {
-        const existingMessage = Array.from(chatContainer.children).some(el => el.textContent === msg.message);
-        if (!existingMessage) {
-            const messageElement = document.createElement('div');
-            messageElement.className = msg.isSender ? 'd-flex justify-content-end mb-3' : 'd-flex mb-3';
-            messageElement.innerHTML = `
-                <div class="${msg.isSender ? 'bg-primary text-white' : 'bg-light'} p-2 rounded-pill">
-                    ${msg.message}
-                </div>
-            `;
-            chatContainer.appendChild(messageElement);
-        }
-    });
+            messages.forEach(msg => {
+                const messageElement = document.createElement('div');
+                messageElement.className = msg.isSender ? 'd-flex justify-content-end mb-3' : 'd-flex mb-3';
+                messageElement.innerHTML = `
+                    <div class="${msg.isSender ? 'bg-primary text-white' : 'bg-light'} p-2 rounded-pill">
+                        ${msg.message}
+                    </div>
+                `;
+                chatContainer.appendChild(messageElement);
+            });
 
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
         } catch (error) {
             console.error('Error fetching messages:', error);
         }
     }
 
-
-       async function sendMessage() {
+    // Function to send a message
+    async function sendMessage() {
         const userId = '@Userid';
         const messageInput = document.getElementById('sndmessage');
         const message = messageInput.value.trim();
@@ -223,9 +247,11 @@
 
             if (response.ok) {
                 messageInput.value = ''; // Clear input
-                const chatContainer = document.querySelector('.p-3[style*="overflow-y"]');
+
+                // Add the message to the chat panel immediately
+                const chatContainer = document.getElementById("chat-messages");
                 const messageElement = document.createElement('div');
-                messageElement.className = 'd-flex justify-content-end mb-3';
+                messageElement.className = 'd-flex justify-content-end mb-3'; // Sender's message is always on the right
                 messageElement.innerHTML = `
                     <div class="bg-primary text-white p-2 rounded-pill">
                         ${message}
@@ -239,5 +265,28 @@
         } catch (error) {
             console.error('Error sending message:', error);
         }
+    }
+
+    // Restore selected user on page load
+    document.addEventListener("DOMContentLoaded", function () {
+        const selectedUserId = localStorage.getItem("selectedUserId");
+        const selectedUserName = localStorage.getItem("selectedUserName");
+        const selectedUserProfile = localStorage.getItem("selectedUserProfile");
+
+        if (selectedUserId && selectedUserName && selectedUserProfile) {
+            // Find the user element in the list and trigger the chat panel update
+            const userElement = document.querySelector(`.list-group-item[data-id="${selectedUserId}"]`);
+            if (userElement) {
+                updateChatPanel(userElement, new Event("click"));
+            }
+        }
+    });
+
+    // Logout function to clear local storage
+    function logout() {
+        localStorage.removeItem("selectedUserId");
+        localStorage.removeItem("selectedUserName");
+        localStorage.removeItem("selectedUserProfile");
+        window.location.href = "/User/Logout"; // Redirect to logout action
     }
 </script>

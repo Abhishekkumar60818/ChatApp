@@ -93,7 +93,7 @@ namespace ChatApp.Controllers
             // Store user details in the session
             HttpContext.Session.SetInt32("UserId", user.Id);
             HttpContext.Session.SetString("UserImage", user.ProfileImagePath); // Assuming `ImageUrl` is a property in the `Users` table
-
+            HttpContext.Session.SetString("uName", user.Name);
             // Redirect to the chat page or home page
             return RedirectToAction("Index", "Chat");
         }
