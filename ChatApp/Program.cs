@@ -44,7 +44,6 @@ namespace ChatApp
                 name: "default",
         pattern: "{controller=Chat}/{action=Index}/{id?}");
             app.MapHub<ChatHub>("/chatHub");
-            //pattern: "api/{controller=Chat}/{action=Index}/{id?}"); // Default route for Chat controller
 
             app.Run();
         }
