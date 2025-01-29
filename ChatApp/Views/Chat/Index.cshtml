@@ -138,20 +138,27 @@
     connection.start().catch(err => console.error(err.toString()));
 
     // Handle received messages
-    connection.on("ReceiveMessage", (senderId, message) => {
+       connection.on("ReceiveMessage", (senderId, message) => {
         const chatContainer = document.getElementById("chat-messages");
-        const isSender = senderId === '@Userid';
+        const userId = '@Userid'; // Razor syntax for current user ID
+        const selectedUserId = localStorage.getItem("selectedUserId");
 
-        const messageElement = document.createElement('div');
-        messageElement.className = isSender ? 'd-flex justify-content-end mb-3' : 'd-flex mb-3';
-        messageElement.innerHTML = `
-            <div class="${isSender ? 'bg-primary text-white' : 'bg-light'} p-2 rounded-pill">
-                ${message}
-            </div>
-        `;
-        chatContainer.appendChild(messageElement);
-        chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+        const isSender = senderId == userId;
+        const isReceiver = senderId == selectedUserId;
+
+        if (isSender || isReceiver) {
+            const messageElement = document.createElement('div');
+            messageElement.className = isSender ? 'd-flex justify-content-end mb-3' : 'd-flex mb-3';
+            messageElement.innerHTML = `
+                <div class="${isSender ? 'bg-primary text-white' : 'bg-light'} p-2 rounded-pill">
+                    ${message}
+                </div>
+            `;
+            chatContainer.appendChild(messageElement);
+            chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+        }
     });
+
 
     // Function to update the chat panel when a user is selected
     async function updateChatPanel(userElement, event) {
@@ -216,8 +223,7 @@
         }
     }
 
-    // Function to send a message
-    async function sendMessage() {
+       async function sendMessage() {
         const userId = '@Userid';
         const messageInput = document.getElementById('sndmessage');
         const message = messageInput.value.trim();
@@ -227,7 +233,7 @@
             return;
         }
 
-        const selectedUserId = document.querySelector('.list-group-item.active')?.getAttribute('data-id');
+        const selectedUserId = localStorage.getItem("selectedUserId");
         if (!selectedUserId) {
             alert("Please select a user to chat with.");
             return;
@@ -242,26 +248,15 @@
         try {
             const response = await fetch('/Chat/SendMessage', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(chat)
             });
 
             if (response.ok) {
-                messageInput.value = ''; // Clear input
+                messageInput.value = '';
 
-                // Add the message to the chat panel immediately
-                const chatContainer = document.getElementById("chat-messages");
-                const messageElement = document.createElement('div');
-                messageElement.className = 'd-flex justify-content-end mb-3'; // Sender's message is always on the right
-                messageElement.innerHTML = `
-                    <div class="bg-primary text-white p-2 rounded-pill">
-                        ${message}
-                    </div>
-                `;
-                chatContainer.appendChild(messageElement);
-                chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+                // Send message to SignalR
+                await connection.invoke("SendMessage", userId, selectedUserId, message);
             } else {
                 alert("Failed to send message.");
             }
@@ -269,6 +264,7 @@
             console.error('Error sending message:', error);
         }
     }
+
 
     // Restore selected user on page load
     document.addEventListener("DOMContentLoaded", function () {
