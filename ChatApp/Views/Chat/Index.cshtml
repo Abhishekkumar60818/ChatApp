@@ -156,8 +156,19 @@
             `;
             chatContainer.appendChild(messageElement);
             chatContainer.scrollTop = chatContainer.scrollHeight; // Scroll to bottom
+
+            // Play notification sound only for the receiver
+        if (!isSender) {
+            playNotificationSound();
+        }
         }
     });
+
+        // Function to play notification sound
+    function playNotificationSound() {
+        const audio = new Audio('/notifications/notification.mp3'); // Adjust path if needed
+        audio.play().catch(error => console.error("Error playing sound:", error));
+    }
 
 
     // Function to update the chat panel when a user is selected
